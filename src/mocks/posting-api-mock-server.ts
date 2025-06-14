@@ -3,6 +3,7 @@ import MockAdapter from 'axios-mock-adapter';
 
 // This is a Mock API Server
 const createApiMockServer = function () {
+  const mock = new MockAdapter(axios);
   const postingsData = [
     {
       id: 'DS36Bkeu',
@@ -3808,19 +3809,21 @@ const createApiMockServer = function () {
     },
   ];
 
-  // This sets the mock adapter on the default instance
-  const mock = new MockAdapter(axios);
+  // Mock GET /postings endpoint
+  mock.onGet('/postings').reply(200, postingsData);
 
-  // GET all postings
-  mock.onGet('/postings').reply(200, {
-    postings: postingsData,
+  // Mock POST /postings endpoint
+  mock.onPost('/postings').reply((config) => {
+    const newPosting = JSON.parse(config.data);
+    const createdPosting = {
+      ...newPosting,
+      id: Math.random().toString(36).substring(7),
+    };
+    postingsData.push(createdPosting);
+    return [201, createdPosting];
   });
 
-  // POST: adds a new posting
-  mock.onPost('/posting').reply(function (config) {
-    postingsData.push(JSON.parse(config.data));
-    return [200];
-  });
+  return mock;
 };
 
 export default createApiMockServer;

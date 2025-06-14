@@ -1,27 +1,52 @@
-import express, { Express, Request, Response } from 'express';
+import express from 'express';
 import * as dotenv from 'dotenv';
-import postingAPIServer from "./mocks/posting-api-mock-server";
-import { CompanyDB } from "./mocks/company.db";
-import { Company } from "./repositories/company.model";
+import { CompanyDB } from './mocks/company.db';
 import { CompanyPostingsController } from './controllers/company-postings.controller';
 import { CompanyPostingsService } from './services/company-postings.service';
+import { CompanyPostingRepository } from './repositories/company-posting.repository';
+import postingAPIServer from './mocks/posting-api-mock-server';
 
-// Start the mock Posting API server
-postingAPIServer();
 dotenv.config();
 
-const app: Express = express();
-const port = process.env.PORT || 3000;
-const companyPostingsRouter = express.Router();
+const PORT = process.env.PORT || 3001;
+const MOCK_API_URL = 'http://localhost:3000';
 
-const companyDB = new CompanyDB();
-const companyPostingsService = new CompanyPostingsService(companyDB);
-const companyPostingsController = new CompanyPostingsController(companyPostingsService);
+export async function createServer(
+  companyDB: CompanyDB,
+  repository: CompanyPostingRepository
+) {
+  const app = express();
+  app.use(express.json());
 
-app.use(express.json());
-companyPostingsRouter.get('/company-postings', companyPostingsController.get);
-companyPostingsRouter.post('/company-postings', companyPostingsController.post);
+  // Initialize mock API server
+  postingAPIServer();
 
-app.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
-});
+  // Initialize services and controllers
+  const service = new CompanyPostingsService(repository, companyDB);
+  const controller = new CompanyPostingsController(service);
+
+  // Setup routes
+  app.get('/api/company-postings', (req, res) => controller.get(req, res));
+  app.post('/api/company-postings', (req, res) => controller.post(req, res));
+
+  return app;
+}
+
+if (require.main === module) {
+  const repository = new CompanyPostingRepository(MOCK_API_URL);
+  const companyDB = new CompanyDB();
+
+  createServer(companyDB, repository).then((app) => {
+    const server = app.listen(PORT, () => {
+      const address = server.address();
+      const serverUrl =
+        typeof address === 'string'
+          ? address
+          : `http://${
+              address?.address === '::' ? 'localhost' : address?.address
+            }:${address?.port}`;
+
+      console.log(`⚡️[server]: Server is running at ${serverUrl}`);
+    });
+  });
+}
