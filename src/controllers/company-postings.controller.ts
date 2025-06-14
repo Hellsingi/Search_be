@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { CompanyPostingsService } from '../services/company-postings.service';
-import { PostingResponseSchema, CreatePostingSchema } from '../models/posting.model';
+import { PostingResponseSchema, CreatePostingSchema, PostingFilterSchema } from '../models/posting.model';
 import { ZodError } from 'zod';
 
 export class CompanyPostingsController {
@@ -8,12 +8,7 @@ export class CompanyPostingsController {
 
     async get(req: Request, res: Response): Promise<void> {
         try {
-            const { equipmentType, fullPartial } = req.query;
-
-            const filters = {
-                equipmentType: equipmentType as string | undefined,
-                fullPartial: fullPartial as string | undefined,
-            };
+            const filters = PostingFilterSchema.parse(req.query);
 
             const postings = await this.companyPostingsService.getFilteredPostings(filters);
 
@@ -23,6 +18,14 @@ export class CompanyPostingsController {
 
             res.json(validatedPostings);
         } catch (error) {
+            if (error instanceof ZodError) {
+                res.status(400).json({
+                    error: 'Invalid filter parameters',
+                    details: error.errors
+                });
+                return;
+            }
+
             console.error('Error fetching postings:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
