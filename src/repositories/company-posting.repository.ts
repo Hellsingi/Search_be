@@ -10,7 +10,7 @@ export class CompanyPostingRepository {
 
     async getPostings(): Promise<Posting[]> {
         try {
-            const response = await axios.get<Posting[]>(this.apiUrl);
+            const response = await axios.get<Posting[]>('/postings');
             return response.data;
         } catch (error) {
             console.error('Error fetching postings from API:', error);
@@ -20,7 +20,7 @@ export class CompanyPostingRepository {
 
     async createPosting(posting: Omit<Posting, 'id'>): Promise<Posting> {
         try {
-            const response = await axios.post<Posting>(this.apiUrl, posting);
+            const response = await axios.post<Posting>('/postings', posting);
             return response.data;
         } catch (error) {
             console.error('Error creating posting:', error);

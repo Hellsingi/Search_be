@@ -12,7 +12,7 @@
     "posttranspile": "copyfiles package.json build; ln -fs build/dist dist",
     "build": "npm run clean && npm run transpile",
     "clean": "rm -rf dist build",
-    "start": "npm run clean && npm run transpile && node dist/index.js",
+    "start": "npm run build && node dist/index.js",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
     "test": "npm run test:unit",
     "test:unit": "JEST_JUNIT_OUTPUT_DIR=build/reports/unit npx jest --config=.jest/unit-config.ts --coverage --coverageDirectory ./build/reports/unit/coverage --colors",

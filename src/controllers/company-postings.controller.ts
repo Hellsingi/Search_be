@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CompanyPostingsService } from '../services/company-postings.service';
-import { PostingResponseSchema } from '../models/posting.model';
+import { PostingResponseSchema, CreatePostingSchema } from '../models/posting.model';
+import { ZodError } from 'zod';
 
 export class CompanyPostingsController {
     constructor(private companyPostingsService: CompanyPostingsService) { }
@@ -28,7 +29,23 @@ export class CompanyPostingsController {
     }
 
     async post(req: Request, res: Response): Promise<void> {
-        // TODO: Implement POST endpoint
-        res.status(501).json({ error: 'Not implemented yet' });
+        try {
+            const validatedData = CreatePostingSchema.parse(req.body);
+            const posting = await this.companyPostingsService.createPosting(validatedData);
+            const validatedPosting = PostingResponseSchema.parse(posting);
+
+            res.status(201).json(validatedPosting);
+        } catch (error) {
+            if (error instanceof ZodError) {
+                res.status(400).json({
+                    error: 'Invalid request data',
+                    details: error.errors
+                });
+                return;
+            }
+
+            console.error('Error creating posting:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 }

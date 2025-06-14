@@ -24,6 +24,12 @@ export const PostingResponseSchema = z.object({
   }),
 });
 
+export const CreatePostingSchema = z.object({
+  companyId: z.string(),
+  freight: FreightSchema,
+});
+
 export type Posting = z.infer<typeof PostingSchema>;
 export type PostingResponse = z.infer<typeof PostingResponseSchema>;
 export type Freight = z.infer<typeof FreightSchema>;
+export type CreatePosting = z.infer<typeof CreatePostingSchema>;
