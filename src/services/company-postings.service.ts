@@ -2,54 +2,81 @@ import { CompanyDB } from '../mocks/company.db';
 import { PostingResponse, Posting, PostingFilter } from '../models/posting.model';
 import { CompanyPostingRepository } from '../repositories/company-posting.repository';
 import { ApiError } from '../errors/api.error';
+import { PAGINATION } from '../constants/pagination.constants';
 
 export class CompanyPostingsService {
     constructor(
-        private companyDB: CompanyDB,
-        private postingRepository: CompanyPostingRepository
+        private companyPostingRepository: CompanyPostingRepository,
+        private companyDB: CompanyDB
     ) { }
 
-    async getFilteredPostings(filters?: PostingFilter): Promise<PostingResponse[]> {
+    async getFilteredPostings(filters: PostingFilter): Promise<{ data: Posting[], total: number, page: number, limit: number }> {
         try {
-            const postings = await this.postingRepository.getPostings();
+            const page = Math.max(1, filters.page || PAGINATION.DEFAULT_PAGE);
+            const limit = Math.min(Math.max(1, filters.limit || PAGINATION.DEFAULT_LIMIT), PAGINATION.MAX_LIMIT);
+
+            const { companyId, equipmentType, fullPartial, lengthFeet, weightPounds } = filters;
+            const postings = await this.companyPostingRepository.getPostings();
+
             let filteredPostings = postings;
-
-            if (filters) {
-                filteredPostings = postings.filter(posting => {
-                    if (filters.equipmentType && posting.freight.equipmentType !== filters.equipmentType) {
-                        return false;
-                    }
-                    if (filters.fullPartial && posting.freight.fullPartial !== filters.fullPartial) {
-                        return false;
-                    }
-                    return true;
-                });
+            if (companyId) {
+                filteredPostings = filteredPostings.filter(p => p.companyId === companyId);
+            }
+            if (equipmentType) {
+                filteredPostings = filteredPostings.filter(p => p.freight.equipmentType === equipmentType);
+            }
+            if (fullPartial) {
+                filteredPostings = filteredPostings.filter(p => p.freight.fullPartial === fullPartial);
+            }
+            if (lengthFeet) {
+                filteredPostings = filteredPostings.filter(p => p.freight.lengthFeet === lengthFeet);
+            }
+            if (weightPounds) {
+                filteredPostings = filteredPostings.filter(p => p.freight.weightPounds === weightPounds);
             }
 
-            const companyIds = [...new Set(filteredPostings.map(p => p.companyId))];
-            const companies = this.companyDB.getCompaniesByIds(companyIds);
+            const total = filteredPostings.length;
 
-            return filteredPostings.map(posting => ({
-                companyName: companies.get(posting.companyId)?.name || 'Unknown Company',
-                freight: {
-                    weightPounds: posting.freight.weightPounds,
-                    equipmentType: posting.freight.equipmentType,
-                    fullPartial: posting.freight.fullPartial,
-                    lengthFeet: posting.freight.lengthFeet,
-                }
+            const startIndex = (page - 1) * limit;
+            const endIndex = Math.min(startIndex + limit, total);
+
+            if (startIndex >= total) {
+                return {
+                    data: [],
+                    total,
+                    page,
+                    limit
+                };
+            }
+
+            const paginatedPostings = filteredPostings.slice(startIndex, endIndex);
+
+            const companyIds = [...new Set(paginatedPostings.map(p => p.companyId))];
+            const companies = await this.companyDB.getCompaniesByIds(companyIds);
+
+            const enrichedPostings = paginatedPostings.map(posting => ({
+                ...posting,
+                companyName: companies.get(posting.companyId)?.name || 'Unknown Company'
             }));
+
+            return {
+                data: enrichedPostings,
+                total,
+                page,
+                limit
+            };
         } catch (error) {
-            if (error instanceof Error && error.message.includes('Company with ID')) {
-                throw ApiError.notFound('Company not found', { error: error.message });
+            if (error instanceof Error && error.message.includes('Company not found')) {
+                throw ApiError.notFound('Company not found');
             }
-            throw ApiError.internal('Failed to fetch postings', { error: error instanceof Error ? error.message : 'Unknown error' });
+            throw ApiError.internal('Failed to fetch postings');
         }
     }
 
     async createPosting(posting: Omit<Posting, 'id'>): Promise<PostingResponse> {
         try {
             const company = this.companyDB.getCompanyById(posting.companyId);
-            const createdPosting = await this.postingRepository.createPosting(posting);
+            const createdPosting = await this.companyPostingRepository.createPosting(posting);
 
             return {
                 companyName: company.name,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PAGINATION } from '../constants/pagination.constants';
 
 export const FreightSchema = z.object({
   equipmentType: z.string().min(1, 'Equipment type is required'),
@@ -30,9 +31,17 @@ export const CreatePostingSchema = z.object({
 });
 
 export const PostingFilterSchema = z.object({
-  equipmentType: z.string().optional(),
-  fullPartial: z.string().optional(),
-}).strict('Invalid filter parameters. Allowed parameters are: equipmentType, fullPartial');
+    companyId: z.string().optional(),
+    equipmentType: z.string().optional(),
+    fullPartial: z.string().optional(),
+    lengthFeet: z.number().optional(),
+    weightPounds: z.number().optional(),
+    page: z.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+    limit: z.number().int()
+        .min(PAGINATION.MIN_LIMIT, PAGINATION.ERROR_MESSAGES.MIN_LIMIT(PAGINATION.MIN_LIMIT))
+        .max(PAGINATION.MAX_LIMIT, PAGINATION.ERROR_MESSAGES.MAX_LIMIT(PAGINATION.MAX_LIMIT))
+        .default(PAGINATION.DEFAULT_LIMIT)
+}).strict('Invalid filter parameters. Allowed parameters are: equipmentType, fullPartial, lengthFeet, weightPounds, page, limit');
 
 export type Posting = z.infer<typeof PostingSchema>;
 export type PostingResponse = z.infer<typeof PostingResponseSchema>;

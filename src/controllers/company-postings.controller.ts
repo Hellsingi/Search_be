@@ -10,9 +10,19 @@ export class CompanyPostingsController {
     async get(req: Request, res: Response): Promise<void> {
         try {
             const filters = PostingFilterSchema.parse(req.query);
-            const postings = await this.companyPostingsService.getFilteredPostings(filters);
+            const { data: postings, total, page, limit } = await this.companyPostingsService.getFilteredPostings(filters);
+
             const validatedPostings = postings.map(posting => PostingResponseSchema.parse(posting));
-            res.json(validatedPostings);
+
+            res.json({
+                data: validatedPostings,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
+            });
         } catch (error) {
             if (error instanceof ZodError) {
                 res.status(400).json({

@@ -18,7 +18,7 @@ const companyPostingsRouter = express.Router();
 
 const companyDB = new CompanyDB();
 const companyPostingRepository = new CompanyPostingRepository(apiUrl);
-const companyPostingsService = new CompanyPostingsService(companyDB, companyPostingRepository);
+const companyPostingsService = new CompanyPostingsService(companyPostingRepository, companyDB);
 const companyPostingsController = new CompanyPostingsController(companyPostingsService);
 
 app.use(express.json());
