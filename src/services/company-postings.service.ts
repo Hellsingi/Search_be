@@ -1,6 +1,7 @@
 import { CompanyDB } from '../mocks/company.db';
 import { PostingResponse, Posting, PostingFilter } from '../models/posting.model';
 import { CompanyPostingRepository } from '../repositories/company-posting.repository';
+import { ApiError } from '../errors/api.error';
 
 export class CompanyPostingsService {
     constructor(
@@ -9,24 +10,23 @@ export class CompanyPostingsService {
     ) { }
 
     async getFilteredPostings(filters?: PostingFilter): Promise<PostingResponse[]> {
-        const postings = await this.postingRepository.getPostings();
-        let filteredPostings = postings;
-
-        if (filters) {
-            filteredPostings = postings.filter(posting => {
-                if (filters.equipmentType && posting.freight.equipmentType !== filters.equipmentType) {
-                    return false;
-                }
-                if (filters.fullPartial && posting.freight.fullPartial !== filters.fullPartial) {
-                    return false;
-                }
-                return true;
-            });
-        }
-
-        const companyIds = [...new Set(filteredPostings.map(p => p.companyId))];
-
         try {
+            const postings = await this.postingRepository.getPostings();
+            let filteredPostings = postings;
+
+            if (filters) {
+                filteredPostings = postings.filter(posting => {
+                    if (filters.equipmentType && posting.freight.equipmentType !== filters.equipmentType) {
+                        return false;
+                    }
+                    if (filters.fullPartial && posting.freight.fullPartial !== filters.fullPartial) {
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+            const companyIds = [...new Set(filteredPostings.map(p => p.companyId))];
             const companies = this.companyDB.getCompaniesByIds(companyIds);
 
             return filteredPostings.map(posting => ({
@@ -39,8 +39,10 @@ export class CompanyPostingsService {
                 }
             }));
         } catch (error) {
-            console.error('Error enriching postings with company data:', error);
-            throw new Error('Failed to enrich postings with company data');
+            if (error instanceof Error && error.message.includes('Company with ID')) {
+                throw ApiError.notFound('Company not found', { error: error.message });
+            }
+            throw ApiError.internal('Failed to fetch postings', { error: error instanceof Error ? error.message : 'Unknown error' });
         }
     }
 
@@ -60,10 +62,9 @@ export class CompanyPostingsService {
             };
         } catch (error) {
             if (error instanceof Error && error.message.includes('Company with ID')) {
-                throw new Error(`Cannot create posting: ${error.message}`);
+                throw ApiError.notFound('Cannot create posting: Company not found', { error: error.message });
             }
-            console.error('Error creating posting:', error);
-            throw new Error('Failed to create posting');
+            throw ApiError.internal('Failed to create posting', { error: error instanceof Error ? error.message : 'Unknown error' });
         }
     }
 }
