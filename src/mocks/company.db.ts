@@ -1,13 +1,13 @@
 import loki from 'lokijs';
-import { Company } from '../models/company.model';
+import { Company, CompanySchema } from '../models/company.model';
 
 export class CompanyDB {
   private db: loki;
+  private companies: Collection<Company>;
 
   constructor() {
     this.db = new loki('companies.db');
-    const companies: Collection<Company> =
-      this.db.addCollection<Company>('companies');
+    this.companies = this.db.addCollection<Company>('companies');
 
     [
       { id: '1', name: 'ACCELERATE SHIPPING' },
@@ -40,18 +40,31 @@ export class CompanyDB {
       { id: '28', name: 'UNLEASH SHIPPING' },
       { id: '29', name: 'VANGUARD SHIPPING' },
     ].forEach((company) => {
-      companies.insert(company);
+      this.companies.insert(CompanySchema.parse(company));
     });
   }
 
-  getCompanyCompanyCollection(): Collection<Company> {
-    return this.db.getCollection('companies');
+  getCompanyById(id: string): Company {
+    const company = this.companies.findOne({ id });
+    if (!company) {
+      throw new Error(`Company with ID ${id} not found`);
+    }
+    return company;
   }
 
-  getCompanyById(id: string): Company | undefined {
-    const companies: Collection<Company> = this.db.getCollection('companies');
-    const result = companies.findOne({ id: id });
-    // TODO: Handle null result
-    return result as Company;
+  getCompaniesByIds(ids: string[]): Map<string, Company> {
+    const companies = this.companies.find({ id: { $in: ids } });
+    const companyMap = new Map<string, Company>();
+
+    companies.forEach(company => {
+      companyMap.set(company.id, company);
+    });
+
+    const missingIds = ids.filter(id => !companyMap.has(id));
+    if (missingIds.length > 0) {
+      throw new Error(`Companies with IDs ${missingIds.join(', ')} not found`);
+    }
+
+    return companyMap;
   }
 }

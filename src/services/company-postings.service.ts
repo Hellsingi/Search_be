@@ -1,5 +1,5 @@
 import { CompanyDB } from '../mocks/company.db';
-import { PostingResponse, Posting } from '../models/posting.model';
+import { PostingResponse, Posting, PostingFilter } from '../models/posting.model';
 import { CompanyPostingRepository } from '../repositories/company-posting.repository';
 
 export class CompanyPostingsService {
@@ -8,7 +8,7 @@ export class CompanyPostingsService {
         private postingRepository: CompanyPostingRepository
     ) { }
 
-    async getFilteredPostings(filters?: { equipmentType?: string; fullPartial?: string }): Promise<PostingResponse[]> {
+    async getFilteredPostings(filters?: PostingFilter): Promise<PostingResponse[]> {
         const postings = await this.postingRepository.getPostings();
         let filteredPostings = postings;
 
@@ -24,33 +24,46 @@ export class CompanyPostingsService {
             });
         }
 
-        return filteredPostings.map(posting => ({
-            companyName: this.getCompanyName(posting.companyId),
-            freight: {
-                weightPounds: posting.freight.weightPounds,
-                equipmentType: posting.freight.equipmentType,
-                fullPartial: posting.freight.fullPartial,
-                lengthFeet: posting.freight.lengthFeet,
-            },
-        }));
+        const companyIds = [...new Set(filteredPostings.map(p => p.companyId))];
+
+        try {
+            const companies = this.companyDB.getCompaniesByIds(companyIds);
+
+            return filteredPostings.map(posting => ({
+                companyName: companies.get(posting.companyId)?.name || 'Unknown Company',
+                freight: {
+                    weightPounds: posting.freight.weightPounds,
+                    equipmentType: posting.freight.equipmentType,
+                    fullPartial: posting.freight.fullPartial,
+                    lengthFeet: posting.freight.lengthFeet,
+                }
+            }));
+        } catch (error) {
+            console.error('Error enriching postings with company data:', error);
+            throw new Error('Failed to enrich postings with company data');
+        }
     }
 
     async createPosting(posting: Omit<Posting, 'id'>): Promise<PostingResponse> {
-        const createdPosting = await this.postingRepository.createPosting(posting);
+        try {
+            const company = this.companyDB.getCompanyById(posting.companyId);
+            const createdPosting = await this.postingRepository.createPosting(posting);
 
-        return {
-            companyName: this.getCompanyName(createdPosting.companyId),
-            freight: {
-                weightPounds: createdPosting.freight.weightPounds,
-                equipmentType: createdPosting.freight.equipmentType,
-                fullPartial: createdPosting.freight.fullPartial,
-                lengthFeet: createdPosting.freight.lengthFeet,
-            },
-        };
-    }
-
-    private getCompanyName(companyId: string): string {
-        const company = this.companyDB.getCompanyById(companyId);
-        return company?.name || 'Unknown Company';
+            return {
+                companyName: company.name,
+                freight: {
+                    weightPounds: createdPosting.freight.weightPounds,
+                    equipmentType: createdPosting.freight.equipmentType,
+                    fullPartial: createdPosting.freight.fullPartial,
+                    lengthFeet: createdPosting.freight.lengthFeet,
+                }
+            };
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('Company with ID')) {
+                throw new Error(`Cannot create posting: ${error.message}`);
+            }
+            console.error('Error creating posting:', error);
+            throw new Error('Failed to create posting');
+        }
     }
 }

@@ -1,9 +1,8 @@
-export class Company {
-  id: string;
-  name: string;
+import { z } from 'zod';
 
-  constructor(id: string, name: string) {
-    this.id = id;
-    this.name = name;
-  }
-}
+export const CompanySchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+});
+
+export type Company = z.infer<typeof CompanySchema>;

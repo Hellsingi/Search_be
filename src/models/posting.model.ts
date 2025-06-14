@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const FreightSchema = z.object({
-  equipmentType: z.string(),
-  fullPartial: z.string(),
-  weightPounds: z.number(),
-  lengthFeet: z.number().optional(),
+  equipmentType: z.string().min(1, 'Equipment type is required'),
+  fullPartial: z.string().min(1, 'Full/Partial status is required'),
+  weightPounds: z.number().positive('Weight must be positive'),
+  lengthFeet: z.number().positive('Length must be positive').optional(),
   comments: z.array(z.object({ comment: z.string() })).optional(),
 });
 
@@ -25,18 +25,14 @@ export const PostingResponseSchema = z.object({
 });
 
 export const CreatePostingSchema = z.object({
-  companyId: z.string(),
+  companyId: z.string().min(1, 'Company ID is required'),
   freight: FreightSchema,
 });
 
 export const PostingFilterSchema = z.object({
   equipmentType: z.string().optional(),
   fullPartial: z.string().optional(),
-}).refine(data => {
-  return data.equipmentType || data.fullPartial;
-}, {
-  message: 'At least one filter parameter (equipmentType or fullPartial) must be provided'
-});
+}).strict('Invalid filter parameters. Allowed parameters are: equipmentType, fullPartial');
 
 export type Posting = z.infer<typeof PostingSchema>;
 export type PostingResponse = z.infer<typeof PostingResponseSchema>;
