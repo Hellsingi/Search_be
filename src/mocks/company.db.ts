@@ -1,5 +1,5 @@
 import loki from 'lokijs';
-import { Company } from '../repositories/company.model';
+import { Company } from '../models/company.model';
 
 export class CompanyDB {
   private db: loki;

@@ -1,10 +1,10 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express } from 'express';
 import * as dotenv from 'dotenv';
-import postingAPIServer from "./mocks/posting-api-mock-server";
-import { CompanyDB } from "./mocks/company.db";
-import { Company } from "./repositories/company.model";
+import postingAPIServer from './mocks/posting-api-mock-server';
+import { CompanyDB } from './mocks/company.db';
 import { CompanyPostingsController } from './controllers/company-postings.controller';
 import { CompanyPostingsService } from './services/company-postings.service';
+import { CompanyPostingRepository } from './repositories/company-posting.repository';
 
 // Start the mock Posting API server
 postingAPIServer();
@@ -15,12 +15,15 @@ const port = process.env.PORT || 3000;
 const companyPostingsRouter = express.Router();
 
 const companyDB = new CompanyDB();
-const companyPostingsService = new CompanyPostingsService(companyDB);
+const companyPostingRepository = new CompanyPostingRepository('http://api.example.com/postings');
+const companyPostingsService = new CompanyPostingsService(companyDB, companyPostingRepository);
 const companyPostingsController = new CompanyPostingsController(companyPostingsService);
 
 app.use(express.json());
-companyPostingsRouter.get('/company-postings', companyPostingsController.get);
-companyPostingsRouter.post('/company-postings', companyPostingsController.post);
+app.use('/api', companyPostingsRouter);
+
+companyPostingsRouter.get('/company-postings', (req, res) => companyPostingsController.get(req, res));
+companyPostingsRouter.post('/company-postings', (req, res) => companyPostingsController.post(req, res));
 
 app.listen(port, () => {
   console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
