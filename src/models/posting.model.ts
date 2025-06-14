@@ -16,6 +16,8 @@ export const PostingSchema = z.object({
 });
 
 export const PostingResponseSchema = z.object({
+  id: z.string(),
+  companyId: z.string(),
   companyName: z.string(),
   freight: z.object({
     weightPounds: z.number(),
@@ -36,12 +38,12 @@ export const PostingFilterSchema = z.object({
     fullPartial: z.string().optional(),
     lengthFeet: z.number().optional(),
     weightPounds: z.number().optional(),
-    page: z.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
-    limit: z.number().int()
+    page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+    limit: z.coerce.number().int()
         .min(PAGINATION.MIN_LIMIT, PAGINATION.ERROR_MESSAGES.MIN_LIMIT(PAGINATION.MIN_LIMIT))
         .max(PAGINATION.MAX_LIMIT, PAGINATION.ERROR_MESSAGES.MAX_LIMIT(PAGINATION.MAX_LIMIT))
         .default(PAGINATION.DEFAULT_LIMIT)
-}).strict('Invalid filter parameters. Allowed parameters are: equipmentType, fullPartial, lengthFeet, weightPounds, page, limit');
+}).passthrough();
 
 export type Posting = z.infer<typeof PostingSchema>;
 export type PostingResponse = z.infer<typeof PostingResponseSchema>;

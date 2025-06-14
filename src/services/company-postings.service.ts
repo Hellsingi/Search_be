@@ -10,7 +10,7 @@ export class CompanyPostingsService {
         private companyDB: CompanyDB
     ) { }
 
-    async getFilteredPostings(filters: PostingFilter): Promise<{ data: Posting[], total: number, page: number, limit: number }> {
+    async getFilteredPostings(filters: PostingFilter): Promise<{ data: (Posting & { companyName: string })[], total: number, page: number, limit: number }> {
         try {
             const page = Math.max(1, filters.page || PAGINATION.DEFAULT_PAGE);
             const limit = Math.min(Math.max(1, filters.limit || PAGINATION.DEFAULT_LIMIT), PAGINATION.MAX_LIMIT);
@@ -55,8 +55,10 @@ export class CompanyPostingsService {
             const companies = await this.companyDB.getCompaniesByIds(companyIds);
 
             const enrichedPostings = paginatedPostings.map(posting => ({
-                ...posting,
-                companyName: companies.get(posting.companyId)?.name || 'Unknown Company'
+                id: posting.id,
+                companyId: posting.companyId,
+                companyName: companies.get(posting.companyId)?.name || 'Unknown',
+                freight: posting.freight,
             }));
 
             return {
@@ -79,13 +81,10 @@ export class CompanyPostingsService {
             const createdPosting = await this.companyPostingRepository.createPosting(posting);
 
             return {
+                id: createdPosting.id,
+                companyId: createdPosting.companyId,
                 companyName: company.name,
-                freight: {
-                    weightPounds: createdPosting.freight.weightPounds,
-                    equipmentType: createdPosting.freight.equipmentType,
-                    fullPartial: createdPosting.freight.fullPartial,
-                    lengthFeet: createdPosting.freight.lengthFeet,
-                }
+                freight: createdPosting.freight,
             };
         } catch (error) {
             if (error instanceof Error && error.message.includes('Company with ID')) {
